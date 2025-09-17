@@ -1,81 +1,91 @@
+import java.io.*;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class PedidoService {
-    private String arquivo;
-    private ClienteService clienteService;
-    private ProdutoService produtoService;
+    private static final String ARQUIVO_PEDIDOS = "pedidos.csv";
 
-    public PedidoService(String arquivo, ClienteService clienteService, ProdutoService produtoService) {
-        this.arquivo = arquivo;
-        this.clienteService = clienteService;
-        this.produtoService = produtoService;
+    public PedidoService() {
+        inicializarArquivo();
     }
 
-    public Pedido criarPedido(Cliente cliente) {
-        return new Pedido(UUID.randomUUID(), cliente);
-    }
-
-    public void salvarPedido(Pedido pedido) {
-        ArquivoUtil.salvarLinha(arquivo, pedido.toLinhaArquivo());
-    }
-
-    public Pedido buscarPorId(UUID id) {
-        List<String> linhas = ArquivoUtil.lerLinhas(arquivo);
-        for (String linha : linhas) {
-            String[] partes = linha.split(";");
-            UUID pedidoId = UUID.fromString(partes[0]);
-            if (pedidoId.equals(id)) {
-                Cliente cliente = clienteService.buscarPorId(UUID.fromString(partes[1]));
-                String status = partes[2];
-                double totalArquivo = Double.parseDouble(partes[3]);
-                String criadoEm = partes[4];
-
-                Pedido pedido = new Pedido(pedidoId, cliente);
-                // sobrescreve o status e data de criação salvos
-                pedido.setStatus(status);
-                pedido.setCriadoEm(criadoEm);
-
-                // reconstruir os itens
-                for (int i = 5; i < partes.length; i += 3) {
-                    UUID produtoId = UUID.fromString(partes[i]);
-                    int qtd = Integer.parseInt(partes[i + 1]);
-                    double precoVenda = Double.parseDouble(partes[i + 2]);
-
-                    Produto produto = produtoService.buscarPorId(produtoId);
-                    if (produto != null) {
-                        pedido.adicionarItem(produto, qtd, precoVenda);
-                    }
-                }
-
-                // recalcula total de verdade
-                pedido.recalcularTotal();
-
-                return pedido;
+    private void inicializarArquivo() {
+        File file = new File(ARQUIVO_PEDIDOS);
+        if (!file.exists()) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("id;idCliente;dataCriacao;status;valorTotal;itens");
+                writer.newLine();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
-        return null;
     }
 
-    public List<Pedido> listarPedidos() {
+    public void salvar(Pedido pedido) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_PEDIDOS, true))) {
+            // itens no formato: idProduto:quantidade:preco | idProduto:quantidade:preco ...
+            String itensStr = pedido.getItens().stream()
+                    .map(i -> i.getProduto().getId() + ":" + i.getQuantidade() + ":" + i.getPrecoVenda())
+                    .reduce((a, b) -> a + "|" + b)
+                    .orElse("");
+
+            writer.write(pedido.getId() + ";" +
+                    pedido.getCliente().getId() + ";" +
+                    pedido.getCriadoEm() + ";" +
+                    pedido.getStatus() + ";" +
+                    pedido.getTotal() + ";" +
+                    itensStr);
+            writer.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Pedido> listar(ClienteService clienteService, ProdutoService produtoService) {
         List<Pedido> pedidos = new ArrayList<>();
-        List<String> linhas = ArquivoUtil.lerLinhas(arquivo);
+        try (BufferedReader reader = new BufferedReader(new FileReader(ARQUIVO_PEDIDOS))) {
+            String linha;
+            boolean primeiraLinha = true;
+            while ((linha = reader.readLine()) != null) {
+                if (primeiraLinha) {
+                    primeiraLinha = false;
+                    continue;
+                }
+                String[] partes = linha.split(";");
+                UUID id = UUID.fromString(partes[0]);
+                UUID clienteId = UUID.fromString(partes[1]);
+                LocalDateTime criadoEm = LocalDateTime.parse(partes[2]);
+                StatusPedido status = StatusPedido.valueOf(partes[3]);
+                double total = Double.parseDouble(partes[4]);
+                String itensStr = partes.length > 5 ? partes[5] : "";
 
-        for (String linha : linhas) {
-            String[] partes = linha.split(";");
-            UUID pedidoId = UUID.fromString(partes[0]);
-            Cliente cliente = clienteService.buscarPorId(UUID.fromString(partes[1]));
-            String status = partes[2];
-            double totalArquivo = Double.parseDouble(partes[3]);
-            String criadoEm = partes[4];
+                Cliente cliente = clienteService.listar().stream()
+                        .filter(c -> c.getId().equals(clienteId))
+                        .findFirst().orElse(null);
 
-            Pedido pedido = new Pedido(pedidoId, cliente);
-            pedido.setStatus(status);
-            pedido.setCriadoEm(criadoEm);
+                Pedido pedido = new Pedido(id, cliente, criadoEm, status);
 
+                if (!itensStr.isEmpty()) {
+                    String[] itensArray = itensStr.split("\\|");
+                    for (String i : itensArray) {
+                        String[] campos = i.split(":");
+                        UUID produtoId = UUID.fromString(campos[0]);
+                        int qtd = Integer.parseInt(campos[1]);
+                        double precoVenda = Double.parseDouble(campos[2]);
 
-            pedido.setTotal(totalArquivo);
+                        Produto produto = produtoService.listar().stream()
+                                .filter(p -> p.getId().equals(produtoId))
+                                .findFirst().orElse(null);
 
-            pedidos.add(pedido);
+                        if (produto != null) {
+                            pedido.adicionarItem(produto, qtd, precoVenda);
+                        }
+                    }
+                }
+                pedidos.add(pedido);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return pedidos;
     }

@@ -1,36 +1,56 @@
+import java.io.*;
 import java.util.*;
 
 public class ProdutoService {
-    private String arquivo;
+    private static final String ARQUIVO_PRODUTOS = "produtos.csv";
 
-    public ProdutoService(String arquivo) {
-        this.arquivo = arquivo;
+    public ProdutoService() {
+        inicializarArquivo();
     }
 
-    public Produto criarProduto(String nome, double preco) {
-        Produto p = new Produto(UUID.randomUUID(), nome, preco);
-        ArquivoUtil.salvarLinha(arquivo, p.toLinhaArquivo());
-        return p;
+    private void inicializarArquivo() {
+        File file = new File(ARQUIVO_PRODUTOS);
+        if (!file.exists()) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("id;nome;preco");
+                writer.newLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public List<Produto> listarProdutos() {
-        List<String> linhas = ArquivoUtil.lerLinhas(arquivo);
+    public void salvar(Produto produto) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_PRODUTOS, true))) {
+            writer.write(produto.getId() + ";" + produto.getNome() + ";" + produto.getPreco());
+            writer.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Produto> listar() {
         List<Produto> produtos = new ArrayList<>();
-        for (String linha : linhas) {
-            produtos.add(Produto.fromLinhaArquivo(linha));
+        try (BufferedReader reader = new BufferedReader(new FileReader(ARQUIVO_PRODUTOS))) {
+            String linha;
+            boolean primeiraLinha = true;
+            while ((linha = reader.readLine()) != null) {
+                if (primeiraLinha) {
+                    primeiraLinha = false;
+                    continue;
+                }
+                String[] partes = linha.split(";");
+                Produto produto = new Produto(UUID.fromString(partes[0]), partes[1], Double.parseDouble(partes[2]));
+                produtos.add(produto);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return produtos;
     }
 
-    public Produto buscarPorId(UUID id) {
-        return listarProdutos().stream()
-                .filter(p -> p.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-    }
-
     public Produto buscarPorNome(String nome) {
-        return listarProdutos().stream()
+        return listar().stream()
                 .filter(p -> p.getNome().equalsIgnoreCase(nome))
                 .findFirst()
                 .orElse(null);

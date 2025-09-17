@@ -1,36 +1,59 @@
+import java.io.*;
 import java.util.*;
 
 public class ClienteService {
-    private String arquivo;
+    private static final String ARQUIVO_CLIENTES = "clientes.csv";
 
-    public ClienteService(String arquivo) {
-        this.arquivo = arquivo;
+    public ClienteService() {
+        inicializarArquivo();
     }
 
-    public Cliente criarCliente(String nome, String doc, String email) {
-        Cliente c = new Cliente(UUID.randomUUID(), nome, doc, email);
-        ArquivoUtil.salvarLinha(arquivo, c.toLinhaArquivo());
-        return c;
+    private void inicializarArquivo() {
+        File file = new File(ARQUIVO_CLIENTES);
+        if (!file.exists()) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("id;nome;documento");
+                writer.newLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public List<Cliente> listarClientes() {
-        List<String> linhas = ArquivoUtil.lerLinhas(arquivo);
+    public void salvar(Cliente cliente) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_CLIENTES, true))) {
+            writer.write(cliente.getId() + ";" + cliente.getNome() + ";" + cliente.getDocumento() + ";" + cliente.getEmail());
+            writer.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Cliente> listar() {
         List<Cliente> clientes = new ArrayList<>();
-        for (String linha : linhas) {
-            clientes.add(Cliente.fromLinhaArquivo(linha));
+        try (BufferedReader reader = new BufferedReader(new FileReader(ARQUIVO_CLIENTES))) {
+            String linha;
+            boolean primeiraLinha = true;
+            while ((linha = reader.readLine()) != null) {
+                if (primeiraLinha) { // pula o cabeçalho
+                    primeiraLinha = false;
+                    continue;
+                }
+                String[] partes = linha.split(";");
+                UUID id = UUID.fromString(partes[0]);
+                String nome = partes[1];
+                String documento = partes[2];
+                String email = partes[3];
+                clientes.add(new Cliente(id, nome, documento, email));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return clientes;
     }
 
-    public Cliente buscarPorId(UUID id) {
-        return listarClientes().stream()
-                .filter(c -> c.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-    }
-
     public Cliente buscarPorNome(String nome) {
-        return listarClientes().stream()
+        return listar().stream()
                 .filter(c -> c.getNome().equalsIgnoreCase(nome))
                 .findFirst()
                 .orElse(null);

@@ -16,6 +16,13 @@ public class Pedido {
         this.criadoEm = LocalDateTime.now(); // registra a data de criação
     }
 
+    public Pedido(UUID id, Cliente cliente, LocalDateTime criadoEm, StatusPedido status) {
+        this.id = id;
+        this.cliente = cliente;
+        this.criadoEm = criadoEm;
+        this.status = String.valueOf(status);
+    }
+
     public UUID getId() { return id; }
     public Cliente getCliente() { return cliente; }
     public List<ItemPedido> getItens() { return itens; }
@@ -24,7 +31,9 @@ public class Pedido {
     public LocalDateTime getCriadoEm() { return criadoEm; } // <-- getter novo
 
     public void adicionarItem(Produto produto, int quantidade, double precoVenda) {
-        itens.add(new ItemPedido(produto, quantidade, precoVenda));
+        ItemPedido item = new ItemPedido(produto, quantidade, precoVenda);
+        itens.add(item);
+        total += item.getTotal();
     }
 
     public void finalizarPedido() {

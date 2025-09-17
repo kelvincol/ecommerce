@@ -1,87 +1,84 @@
 import java.util.*;
 
 public class App {
-    private static final Scanner sc = new Scanner(System.in);
-    private static final ClienteService clienteService = new ClienteService("clientes.txt");
-    private static final ProdutoService produtoService = new ProdutoService("produtos.txt");
-    private static final PedidoService pedidoService = new PedidoService("pedidos.txt", clienteService, produtoService);
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final ClienteService clienteService = new ClienteService();
+    private static final ProdutoService produtoService = new ProdutoService();
+    private static final PedidoService pedidoService = new PedidoService();
 
     public static void main(String[] args) {
         while (true) {
             System.out.println("\n=== MENU E-COMMERCE ===");
-            System.out.println("1 - Cadastrar cliente");
-            System.out.println("2 - Listar clientes");
-            System.out.println("3 - Cadastrar produto");
-            System.out.println("4 - Listar produtos");
-            System.out.println("5 - Criar pedido");
-            System.out.println("6 - Consultar pedido");
-            System.out.println("7 - Listar pedidos");
+            System.out.println("1 - Cadastrar Cliente");
+            System.out.println("2 - Cadastrar Produto");
+            System.out.println("3 - Criar Pedido");
+            System.out.println("4 - Consultar Cliente");
+            System.out.println("5 - Consultar Produto");
+            System.out.println("6 - Consultar Pedido por ID");
+            System.out.println("7 - Listar Todos os Pedidos");
             System.out.println("0 - Sair");
             System.out.print("Escolha: ");
 
-            int opcao = Integer.parseInt(sc.nextLine());
+            int opcao = Integer.parseInt(scanner.nextLine());
+
             switch (opcao) {
                 case 1 -> cadastrarCliente();
-                case 2 -> listarClientes();
-                case 3 -> cadastrarProduto();
-                case 4 -> listarProdutos();
-                case 5 -> criarPedido();
-                case 6 -> consultarPedido();
+                case 2 -> cadastrarProduto();
+                case 3 -> criarPedido();
+                case 4 -> consultarCliente();
+                case 5 -> consultarProduto();
+                case 6 -> consultarPedidoPorId();
                 case 7 -> listarPedidos();
                 case 0 -> {
-                    System.out.println("Saindo...");
+                    System.out.println("Encerrando...");
                     return;
                 }
-                default -> System.out.println("Opção inválida!");
+                default -> System.out.println("Opção inválida.");
             }
         }
     }
 
     private static void cadastrarCliente() {
-        System.out.print("Nome: ");
-        String nome = sc.nextLine();
-        System.out.print("Documento: ");
-        String doc = sc.nextLine();
-        System.out.print("E-mail: ");
-        String email = sc.nextLine();
-        Cliente c = clienteService.criarCliente(nome, doc, email);
-        System.out.println("Cliente cadastrado: " + c);
-    }
+        System.out.print("Nome do cliente: ");
+        String nome = scanner.nextLine();
+        System.out.print("Documento do cliente: ");
+        String documento = scanner.nextLine();
+        System.out.print("E-mail do cliente: ");
+        String email = scanner.nextLine();
 
-    private static void listarClientes() {
-        clienteService.listarClientes().forEach(System.out::println);
+        Cliente cliente = new Cliente(UUID.randomUUID(), nome, documento, email);
+        clienteService.salvar(cliente);
+        System.out.println("Cliente cadastrado com sucesso!");
     }
 
     private static void cadastrarProduto() {
-        System.out.print("Nome: ");
-        String nome = sc.nextLine();
-        System.out.print("Preço: ");
-        double preco = Double.parseDouble(sc.nextLine());
-        Produto p = produtoService.criarProduto(nome, preco);
-        System.out.println("Produto cadastrado: " + p);
-    }
+        System.out.print("Nome do produto: ");
+        String nome = scanner.nextLine();
+        System.out.print("Preço do produto: ");
+        double preco = Double.parseDouble(scanner.nextLine());
 
-    private static void listarProdutos() {
-        produtoService.listarProdutos().forEach(System.out::println);
+        Produto produto = new Produto(UUID.randomUUID(), nome, preco);
+        produtoService.salvar(produto);
+        System.out.println("Produto cadastrado com sucesso!");
     }
 
     private static void criarPedido() {
         System.out.print("Nome do cliente: ");
-        String nomeCliente = sc.nextLine();
-
+        String nomeCliente = scanner.nextLine();
         Cliente cliente = clienteService.buscarPorNome(nomeCliente);
+
         if (cliente == null) {
             System.out.println("Cliente não encontrado!");
             return;
         }
 
-        Pedido pedido = pedidoService.criarPedido(cliente);
-        while (true) {
-            System.out.println("Adicionar item? (s/n)");
-            if (!sc.nextLine().equalsIgnoreCase("s")) break;
+        Pedido pedido = new Pedido(UUID.randomUUID(), cliente);
 
-            System.out.print("Nome do produto: ");
-            String nomeProduto = sc.nextLine();
+        while (true) {
+            System.out.print("Nome do produto (ou 'fim' para encerrar): ");
+            String nomeProduto = scanner.nextLine();
+            if (nomeProduto.equalsIgnoreCase("fim")) break;
+
             Produto produto = produtoService.buscarPorNome(nomeProduto);
             if (produto == null) {
                 System.out.println("Produto não encontrado!");
@@ -89,58 +86,92 @@ public class App {
             }
 
             System.out.print("Quantidade: ");
-            int qtd = Integer.parseInt(sc.nextLine());
-            System.out.print("Preço venda: ");
-            double precoVenda = Double.parseDouble(sc.nextLine());
+            int qtd = Integer.parseInt(scanner.nextLine());
+            System.out.print("Preço de venda: ");
+            double precoVenda = Double.parseDouble(scanner.nextLine());
 
             pedido.adicionarItem(produto, qtd, precoVenda);
         }
-        pedido.finalizarPedido();
-        pedidoService.salvarPedido(pedido);
-        System.out.println("Pedido criado e finalizado: " + pedido.getId());
+
+        if (pedido.getItens().isEmpty()) {
+            System.out.println("Pedido não pode ser criado sem itens!");
+            return;
+        }
+
+        pedidoService.salvar(pedido);
+        System.out.println("Pedido criado com sucesso!");
     }
 
-    private static void consultarPedido() {
+    private static void consultarCliente() {
+        System.out.print("Nome do cliente: ");
+        String nome = scanner.nextLine();
+        Cliente cliente = clienteService.buscarPorNome(nome);
+
+        if (cliente == null) {
+            System.out.println("Cliente não encontrado!");
+        } else {
+            System.out.println("ID: " + cliente.getId());
+            System.out.println("Nome: " + cliente.getNome());
+            System.out.println("Documento: " + cliente.getDocumento());
+            System.out.println("E-mail: " + cliente.getEmail());
+        }
+    }
+
+    private static void consultarProduto() {
+        System.out.print("Nome do produto: ");
+        String nome = scanner.nextLine();
+        Produto produto = produtoService.buscarPorNome(nome);
+
+        if (produto == null) {
+            System.out.println("Produto não encontrado!");
+        } else {
+            System.out.println("ID: " + produto.getId());
+            System.out.println("Nome: " + produto.getNome());
+            System.out.println("Preço: R$ " + produto.getPreco());
+        }
+    }
+
+    private static void consultarPedidoPorId() {
         System.out.print("ID do pedido: ");
-        UUID id = UUID.fromString(sc.nextLine());
-        Pedido pedido = pedidoService.buscarPorId(id);
+        String id = scanner.nextLine();
+
+        List<Pedido> pedidos = pedidoService.listar(clienteService, produtoService);
+        Pedido pedido = pedidos.stream()
+                .filter(p -> p.getId().toString().equals(id))
+                .findFirst()
+                .orElse(null);
+
         if (pedido == null) {
             System.out.println("Pedido não encontrado!");
             return;
         }
-        imprimirPedido(pedido);
-    }
 
-    private static void imprimirPedido(Pedido pedido) {
-        System.out.println("=== Detalhes do Pedido ===");
+        System.out.println("=== Pedido ===");
+        System.out.println("ID: " + pedido.getId());
         System.out.println("Cliente: " + pedido.getCliente().getNome());
+        System.out.println("Data de criação: " + pedido.getCriadoEm());
         System.out.println("Status: " + pedido.getStatus());
+        System.out.printf("Valor total: R$ %.2f%n", pedido.getTotal());
+
+        System.out.println("Itens:");
         pedido.getItens().forEach(item ->
-                System.out.printf("Produto: %s | Qtd: %d | Preço: %.2f | Total: %.2f%n",
-                        item.getProduto().getNome(),
-                        item.getQuantidade(),
-                        item.getPrecoVenda(),
-                        item.getTotal()));
-        System.out.printf("Total do pedido: %.2f%n", pedido.getTotal());
+                System.out.println(item.getProduto().getNome() +
+                        " - Qtd: " + item.getQuantidade() +
+                        " - Preço: R$ " + item.getPrecoVenda()));
     }
 
     private static void listarPedidos() {
-        List<Pedido> pedidos = pedidoService.listarPedidos();
+        List<Pedido> pedidos = pedidoService.listar(clienteService, produtoService);
+
         if (pedidos.isEmpty()) {
             System.out.println("Nenhum pedido encontrado.");
             return;
         }
 
-        System.out.println("=== LISTA DE PEDIDOS ===");
+        System.out.println("=== Todos os Pedidos ===");
         for (Pedido p : pedidos) {
-            System.out.printf(
-                    "ID: %s | Cliente: %s | Total: R$ %.2f | Status: %s | Criado em: %s%n",
-                    p.getId(),
-                    p.getCliente().getNome(),
-                    p.getTotal(),
-                    p.getStatus(),
-                    p.getCriadoEm()
-            );
+            System.out.printf("ID: %s | Cliente: %s | Data: %s | Total: R$ %.2f%n",
+                    p.getId(), p.getCliente().getNome(), p.getCriadoEm(), p.getTotal());
         }
     }
 }
