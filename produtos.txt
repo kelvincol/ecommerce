@@ -1,0 +1,4 @@
+e5c13d28-8355-4304-97d7-07f2209add18;chocolate;10.0
+bb3fcfa6-b460-4bd1-bc52-2d8c6c2a4889;chocolate;12.0
+812de48c-d7b1-4e9d-84a2-03350b49e712;suco;15.9
+fbf59dcb-36d6-4099-bf17-326884ccb962;Travesseiro;45.0
