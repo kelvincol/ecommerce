@@ -12,7 +12,7 @@ public class Pedido {
     public Pedido(UUID id, Cliente cliente) {
         this.id = id;
         this.cliente = cliente;
-        this.status = "ABERTO";
+        this.status = "FINALIZADO";
         this.criadoEm = LocalDateTime.now(); // registra a data de criação
     }
 

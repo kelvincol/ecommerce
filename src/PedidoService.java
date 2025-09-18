@@ -1,6 +1,7 @@
 import java.io.*;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PedidoService {
     private static final String ARQUIVO_PEDIDOS = "pedidos.csv";
@@ -89,4 +90,12 @@ public class PedidoService {
         }
         return pedidos;
     }
+
+    public List<Pedido> listarPorCliente(UUID clienteId, ClienteService clienteService, ProdutoService produtoService) {
+        return listar(clienteService, produtoService).stream()
+                .filter(p -> p.getCliente().getId().equals(clienteId))
+                .collect(Collectors.toList());
+    }
+
+
 }

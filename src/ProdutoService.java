@@ -55,4 +55,28 @@ public class ProdutoService {
                 .findFirst()
                 .orElse(null);
     }
+
+    public void atualizar(Produto produtoAtualizado) {
+        List<Produto> produtos = listar();
+        for (int i = 0; i < produtos.size(); i++) {
+            if (produtos.get(i).getId().equals(produtoAtualizado.getId())) {
+                produtos.set(i, produtoAtualizado);
+                break;
+            }
+        }
+        salvarTodos(produtos);
+    }
+
+    private void salvarTodos(List<Produto> produtos) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_PRODUTOS))) {
+            writer.write("id;nome;preco");
+            writer.newLine();
+            for (Produto p : produtos) {
+                writer.write(p.getId() + ";" + p.getNome() + ";" + p.getPreco());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

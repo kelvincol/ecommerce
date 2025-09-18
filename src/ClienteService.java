@@ -58,4 +58,28 @@ public class ClienteService {
                 .findFirst()
                 .orElse(null);
     }
+
+    public void atualizar(Cliente clienteAtualizado) {
+        List<Cliente> clientes = listar();
+        for (int i = 0; i < clientes.size(); i++) {
+            if (clientes.get(i).getId().equals(clienteAtualizado.getId())) {
+                clientes.set(i, clienteAtualizado);
+                break;
+            }
+        }
+        salvarTodos(clientes);
+    }
+
+    private void salvarTodos(List<Cliente> clientes) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_CLIENTES))) {
+            writer.write("id;nome;documento;email");
+            writer.newLine();
+            for (Cliente c : clientes) {
+                writer.write(c.getId() + ";" + c.getNome() + ";" + c.getDocumento() + ";" + c.getEmail());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
